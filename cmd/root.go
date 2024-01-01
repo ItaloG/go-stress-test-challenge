@@ -1,30 +1,30 @@
 /*
 Copyright © 2024 ItaloG
-
 */
 package cmd
 
 import (
+	"fmt"
 	"os"
 
+	"github.com/ItaloG/go-stress-test-challenge/internal"
 	"github.com/spf13/cobra"
 )
 
-
+var url string
+var requests int
+var concurrency int
 
 // rootCmd represents the base command when called without any subcommands
 var rootCmd = &cobra.Command{
 	Use:   "go-stress-test-challenge",
-	Short: "A brief description of your application",
-	Long: `A longer description that spans multiple lines and likely contains
-examples and usage of using your application. For example:
-
-Cobra is a CLI library for Go that empowers applications.
-This application is a tool to generate the needed files
-to quickly create a Cobra application.`,
+	Short: "Aplicação para realizar teste de estresse em web servers",
+	Long:  `Aplicação para realizar teste em web servers utilizando multi-threading`,
 	// Uncomment the following line if your bare application
 	// has an action associated with it:
-	// Run: func(cmd *cobra.Command, args []string) { },
+	Run: func(cmd *cobra.Command, args []string) {
+		internal.RunStressTest(url, requests, concurrency)
+	},
 }
 
 // Execute adds all child commands to the root command and sets flags appropriately.
@@ -37,15 +37,17 @@ func Execute() {
 }
 
 func init() {
-	// Here you will define your flags and configuration settings.
-	// Cobra supports persistent flags, which, if defined here,
-	// will be global for your application.
+	rootCmd.Flags().StringVarP(&url, "url", "u", "", "URL do serviço a ser testado.")
+	rootCmd.Flags().IntVarP(&requests, "requests", "r", 0, "Número total de requests.")
+	rootCmd.Flags().IntVarP(&concurrency, "concurrency", "c", 1, "Número de chamadas simultâneas.")
 
-	// rootCmd.PersistentFlags().StringVar(&cfgFile, "config", "", "config file (default is $HOME/.go-stress-test-challenge.yaml)")
-
-	// Cobra also supports local flags, which will only run
-	// when this action is called directly.
-	rootCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
+	cobra.OnInitialize(validateFlags)
 }
 
-
+func validateFlags() {
+	if url == "" || requests <= 0 || concurrency <= 0 {
+		fmt.Println("Erro: As flags --url, --requests e --concurrency são obrigatórias.")
+		rootCmd.Usage()
+		os.Exit(1)
+	}
+}
