@@ -23,13 +23,7 @@ func GenerateReport(duration time.Duration, totalRequests int, statusCodes map[i
 	}
 	defer file.Close()
 
-	successfulRequests := 0
-
-	for statusCode := range statusCodes {
-		if statusCode == http.StatusOK {
-			successfulRequests++
-		}
-	}
+	successfulRequests := statusCodes[http.StatusOK]
 
 	formattedDuration := fmt.Sprintf("%.2fs", duration.Seconds())
 
@@ -49,6 +43,9 @@ func GenerateReport(duration time.Duration, totalRequests int, statusCodes map[i
 	file.WriteString(codesTitle)
 
 	for code, count := range statusCodes {
+		if code == http.StatusOK {
+			continue
+		}
 		fmt.Printf("Status code %d - quantidade de requests: %d\n", code, count)
 		fmt.Fprintf(file, "Status code %d - quantidade de requests: %d\n", code, count)
 	}
