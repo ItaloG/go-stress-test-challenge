@@ -11,14 +11,48 @@ func PerformStressTest(url string, totalRequests int, concurrency int) (time.Dur
 	var wg sync.WaitGroup
 	successfulRequests := 0
 	statusCodes := make(map[int]int)
-	requestPerThread := totalRequests / concurrency
-
 	resultCh := make(chan int)
 
-	for i := 0; i < concurrency; i++ {
-		wg.Add(1)
-		go runRequests(i, url, requestPerThread, resultCh, &wg)
+	if concurrency >= totalRequests {
+		for i := 0; i < totalRequests; i++ {
+			wg.Add(1)
+			go runRequests(url, resultCh, &wg)
+		}
+	} else {
+		isDivisible := totalRequests % concurrency
 
+		if isDivisible == 0 {
+			remainingRequest := totalRequests
+			manyIterations := totalRequests / concurrency
+			for i := 0; i < manyIterations; i++ {
+				if remainingRequest <= 0 {
+					continue
+				}
+				for i := 0; i < concurrency; i++ {
+					wg.Add(1)
+					go runRequests(url, resultCh, &wg)
+				}
+				remainingRequest = remainingRequest - concurrency
+			}
+		} else {
+			restRequests := totalRequests % concurrency
+			for i := 0; i < restRequests; i++ {
+				wg.Add(1)
+				go runRequests(url, resultCh, &wg)
+			}
+			remainingRequest := totalRequests - restRequests
+			manyIterations := totalRequests / concurrency
+			for i := 0; i < manyIterations; i++ {
+				if remainingRequest <= 0 {
+					continue
+				}
+				for i := 0; i < concurrency; i++ {
+					wg.Add(1)
+					go runRequests(url, resultCh, &wg)
+				}
+				remainingRequest = remainingRequest - concurrency
+			}
+		}
 	}
 
 	go func() {
@@ -37,14 +71,12 @@ func PerformStressTest(url string, totalRequests int, concurrency int) (time.Dur
 	return duration, statusCodes
 }
 
-func runRequests(i int, url string, totalRequests int, resultCh chan<- int, wg *sync.WaitGroup) {
+func runRequests(url string, resultCh chan<- int, wg *sync.WaitGroup) {
 	defer wg.Done()
-	for i := 0; i < totalRequests; i++ {
-		response, err := http.Get(url)
-		if err != nil {
-			resultCh <- 0
-			continue
-		}
-		resultCh <- response.StatusCode
+	response, err := http.Get(url)
+	if err != nil {
+		resultCh <- 0
+		return
 	}
+	resultCh <- response.StatusCode
 }

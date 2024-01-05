@@ -3,7 +3,6 @@ package internal
 import (
 	"net/http"
 	"net/http/httptest"
-	"sync"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -15,13 +14,13 @@ func (m *MockHTTPServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 }
 
-func TestPerformStressTest(t *testing.T) {
+func TestPerformStressWithConcurrencyMoreThanTotalRequestsTest(t *testing.T) {
 	mockServer := httptest.NewServer(&MockHTTPServer{})
 	defer mockServer.Close()
 
 	url := mockServer.URL
-	totalRequests := 100
-	concurrency := 5
+	totalRequests := 10
+	concurrency := 15
 
 	duration, statusCodes := PerformStressTest(url, totalRequests, concurrency)
 
@@ -30,31 +29,47 @@ func TestPerformStressTest(t *testing.T) {
 	assert.Equal(t, 0, statusCodes[http.StatusNotFound])
 }
 
-func TestRunRequests(t *testing.T) {
+func TestPerformStressWithConcurrencyEqualToTotalRequestsTest(t *testing.T) {
 	mockServer := httptest.NewServer(&MockHTTPServer{})
 	defer mockServer.Close()
 
 	url := mockServer.URL
 	totalRequests := 10
+	concurrency := 10
 
-	var wg sync.WaitGroup
-	wg.Add(1)
+	duration, statusCodes := PerformStressTest(url, totalRequests, concurrency)
 
-	resultCh := make(chan int)
+	assert.True(t, duration.Seconds() > 0)
+	assert.Equal(t, totalRequests, statusCodes[http.StatusOK])
+	assert.Equal(t, 0, statusCodes[http.StatusNotFound])
+}
 
-	go runRequests(1, url, totalRequests, resultCh, &wg)
+func TestPerformStressWithConcurrencyLessThanTotalRequestsAndIsDivisibleTest(t *testing.T) {
+	mockServer := httptest.NewServer(&MockHTTPServer{})
+	defer mockServer.Close()
 
-	go func() {
-		wg.Wait()
-		close(resultCh)
-	}()
+	url := mockServer.URL
+	totalRequests := 1000
+	concurrency := 20
 
-	statusCount := 0
-	for statusCode := range resultCh {
-		if statusCode == http.StatusOK {
-			statusCount++
-		}
-	}
+	duration, statusCodes := PerformStressTest(url, totalRequests, concurrency)
 
-	assert.Equal(t, totalRequests, statusCount)
+	assert.True(t, duration.Seconds() > 0)
+	assert.Equal(t, totalRequests, statusCodes[http.StatusOK])
+	assert.Equal(t, 0, statusCodes[http.StatusNotFound])
+}
+
+func TestPerformStressWithConcurrencyLessThanTotalRequestsAndIsNotDivisibleTest(t *testing.T) {
+	mockServer := httptest.NewServer(&MockHTTPServer{})
+	defer mockServer.Close()
+
+	url := mockServer.URL
+	totalRequests := 10
+	concurrency := 6
+
+	duration, statusCodes := PerformStressTest(url, totalRequests, concurrency)
+
+	assert.True(t, duration.Seconds() > 0)
+	assert.Equal(t, totalRequests, statusCodes[http.StatusOK])
+	assert.Equal(t, 0, statusCodes[http.StatusNotFound])
 }

@@ -15,20 +15,15 @@ var url string
 var requests int
 var concurrency int
 
-// rootCmd represents the base command when called without any subcommands
 var rootCmd = &cobra.Command{
 	Use:   "go-stress-test-challenge",
 	Short: "Aplicação para realizar teste de estresse em web servers",
 	Long:  `Aplicação para realizar teste em web servers utilizando multi-threading`,
-	// Uncomment the following line if your bare application
-	// has an action associated with it:
 	Run: func(cmd *cobra.Command, args []string) {
 		internal.RunStressTest(url, requests, concurrency)
 	},
 }
 
-// Execute adds all child commands to the root command and sets flags appropriately.
-// This is called by main.main(). It only needs to happen once to the rootCmd.
 func Execute() {
 	err := rootCmd.Execute()
 	if err != nil {
@@ -39,7 +34,7 @@ func Execute() {
 func init() {
 	rootCmd.Flags().StringVarP(&url, "url", "u", "", "URL do serviço a ser testado.")
 	rootCmd.Flags().IntVarP(&requests, "requests", "r", 0, "Número total de requests.")
-	rootCmd.Flags().IntVarP(&concurrency, "concurrency", "c", 1, "Número de chamadas simultâneas.")
+	rootCmd.Flags().IntVarP(&concurrency, "concurrency", "c", 0, "Número de chamadas simultâneas.")
 
 	cobra.OnInitialize(validateFlags)
 }
